@@ -1,37 +1,80 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import reactLogo from './assets/react.svg'
 import viteLogo from './assets/vite.svg'
 import heroImg from './assets/hero.png'
 import './App.css'
 
+const API_URL = 'http://localhost:8080/api/todos'
+
 function App() {
-  const [todos, setTodos] = useState([
-    { id: 1, text: 'React 학습하기', completed: false },
-    { id: 2, text: 'Vite로 프로젝트 설정하기', completed: true },
-  ])
+  const [todos, setTodos] = useState([])
   const [inputValue, setInputValue] = useState('')
 
-  const addTodo = (e) => {
+  // 초기 데이터 로드
+  useEffect(() => {
+    fetchTodos()
+  }, [])
+
+  const fetchTodos = async () => {
+    try {
+      const response = await fetch(API_URL)
+      const data = await response.json()
+      setTodos(data)
+    } catch (error) {
+      console.error('Error fetching todos:', error)
+    }
+  }
+
+  const addTodo = async (e) => {
     e.preventDefault()
     if (!inputValue.trim()) return
     
     const newTodo = {
-      id: Date.now(),
       text: inputValue,
       completed: false
     }
-    setTodos([...todos, newTodo])
-    setInputValue('')
+
+    try {
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newTodo)
+      })
+      if (response.ok) {
+        fetchTodos() // 목록 갱신
+        setInputValue('')
+      }
+    } catch (error) {
+      console.error('Error adding todo:', error)
+    }
   }
 
-  const toggleTodo = (id) => {
-    setTodos(todos.map(todo => 
-      todo.id === id ? { ...todo, completed: !todo.completed } : todo
-    ))
+  const toggleTodo = async (todo) => {
+    try {
+      const response = await fetch(`${API_URL}/${todo.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...todo, completed: !todo.completed })
+      })
+      if (response.ok) {
+        fetchTodos()
+      }
+    } catch (error) {
+      console.error('Error toggling todo:', error)
+    }
   }
 
-  const deleteTodo = (id) => {
-    setTodos(todos.filter(todo => todo.id !== id))
+  const deleteTodo = async (id) => {
+    try {
+      const response = await fetch(`${API_URL}/${id}`, {
+        method: 'DELETE'
+      })
+      if (response.ok) {
+        fetchTodos()
+      }
+    } catch (error) {
+      console.error('Error deleting todo:', error)
+    }
   }
 
   return (
@@ -43,7 +86,7 @@ function App() {
           <img src={viteLogo} className="vite" alt="Vite logo" />
         </div>
         <div>
-          <h1>Todo List</h1>
+          <h1>Full-Stack Todo List</h1>
           <form className="todo-input-form" onSubmit={addTodo}>
             <input 
               type="text" 
@@ -58,7 +101,7 @@ function App() {
         <ul className="todo-list">
           {todos.map(todo => (
             <li key={todo.id} className={todo.completed ? 'completed' : ''}>
-              <span onClick={() => toggleTodo(todo.id)}>{todo.text}</span>
+              <span onClick={() => toggleTodo(todo)}>{todo.text}</span>
               <button onClick={() => deleteTodo(todo.id)}>삭제</button>
             </li>
           ))}
